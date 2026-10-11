@@ -34,3 +34,15 @@ Never store debit-card numbers, CVV, bank passwords, private keys, seed phrases,
 ## Safety boundary
 
 The agent may discover and simulate opportunities. Live financial execution remains disabled until a separate, explicitly configured execution profile exists and passes QA/security gates.
+
+## Verification
+
+```sh
+python -m pip install pytest==8.3.5
+python -m pytest
+python -m compileall -q src
+```
+
+CI runs tests on Python 3.11 and 3.13. Source, configuration, docs, and tests
+are restored from the Phase 1 archive; archives remain historical references.
+See docs/PROJECT_CONTEXT.md for outcome semantics and remaining limitations.

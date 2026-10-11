@@ -1,0 +1,14 @@
+mode: PAPER
+currency: USD
+capital:
+  total: 0
+  reserve_ratio: 0.50
+limits:
+  max_single_allocation: 0
+  max_daily_loss: 0
+  max_drawdown: 0
+  max_leverage: 1
+execution:
+  live_enabled: false
+  withdrawals_enabled: false
+  card_access_enabled: false
