@@ -1,36 +1,32 @@
 # Side-Hustle Agent
 
-Autonomous opportunity-discovery and capital-allocation platform designed to identify, evaluate, test, and eventually execute income-generating opportunities under deterministic risk controls.
+**Status: Phase 1 paper-only prototype; no real-money execution.**
 
-## Current status
+This repository contains an opportunity scoring model, deterministic risk governor, and SQLite decision/audit persistence. It does not yet contain a trading simulator, reconciled paper ledger, real-money integrations, discovery scheduler, or evidence of profitability.
 
-**Phase 0 — Architecture and paper mode.** No live brokerage, exchange, payment-card, mining, or withdrawal execution is enabled.
+## Setup
 
-## Non-negotiable operating rule
+Requires Python 3.11+:
 
-Before any code, configuration, schema, dependency, prompt, or infrastructure change:
+```sh
+python -m pip install -e .
+python -m pip install pytest
+python -m pytest
+python -m compileall -q src tests
+```
 
-1. Read `docs/PROJECT_CONTEXT.md`.
-2. Read `docs/CHANGELOG.md`.
-3. Read `docs/OPERATIONS.md`.
-4. Read `docs/QA.md`.
-5. Record the intended change before implementation when it changes architecture, capital controls, integrations, or security.
-6. After implementation, update the context files with exactly what changed, why, verification performed, and remaining risks.
+`PAPER_TEST` means an opportunity passed preliminary checks; **it is not an order, fill, capital reservation, or authorization to spend**.
 
-Never store debit-card numbers, CVV, bank passwords, private keys, seed phrases, or API secrets in this repository.
+## Important reconstruction note
 
-## Architecture
+The repository previously tracked initial and Phase 1 tar.gz archives without corresponding source files. The newly added code is reconstructed from documented Phase 1 interfaces, **not a verified extraction of the existing archive**. The archive is retained unchanged. Validate equivalence before relying on legacy behavior.
 
-- Executive Orchestrator
-- Opportunity Discovery Workers
-- Economic Evaluation Engine
-- Deterministic Risk Governor
-- Paper Execution Layer
-- Ledger / P&L
-- Audit Log
-- Human Approval Boundary
-- Future adapter interfaces for brokers, exchanges, marketplaces, and compute providers
+## Context protocol
 
-## Safety boundary
+Before any change, read `AGENTS.md`, `docs/PROJECT_CONTEXT.md`, `docs/CHANGELOG.md`, `docs/OPERATIONS.md`, and `docs/QA.md`. After any change, update the applicable context documents and verify tests.
 
-The agent may discover and simulate opportunities. Live financial execution remains disabled until a separate, explicitly configured execution profile exists and passes QA/security gates.
+## Security
+
+Never commit or share card details, CVVs, passwords, private keys, seed phrases, or API secrets. AI output cannot override risk limits. Live execution remains disabled until independently reviewed safety controls and explicit approvals exist.
+
+See `PROMPT.md` for the broader long-term plan, and `docs/PROJECT_CONTEXT.md` for verified implementation limits.
