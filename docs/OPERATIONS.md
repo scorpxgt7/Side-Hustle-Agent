@@ -273,3 +273,57 @@ historical and separate. Current internal checks do not provide market valuation
 external reconciliation or repair authorization. P&L has no daily reset and filled
 positions retain risk across dates. Live funding, PHP 500 pilot activation, card access
 and external execution remain unavailable; default config stays PAPER/zero capital.
+
+## Reconciliation/autonomy and provider sandbox procedures — 2026-10-12
+
+See SANDBOX_SETUP.md for the runnable commands and exact provider scope. New APIs
+are PilotPaperService.create_profile/submit_pilot/request_payout/claim_payout/
+confirm_payout, SandboxGateway's durable dispatch/read operations, and the CLI.
+No method accepts a payment card, bank login or OTP. route_/vendor_ references are
+opaque policy identities; they are not account/card numbers or transferable secrets.
+
+Stop writers and verify a SQLite backup before the v3 upgrade. The old v1/v2
+checksums remain accepted only for transactional migration; unknown/mixed/missing
+schemas fail closed. Existing journal IDs, values and audit links are preserved.
+Failed migration rolls back all paper DDL/backfill. Do not reopen v3 databases with
+older binaries, remove metadata/guards or restore old backups to erase actions.
+
+Use `python -m src.cli reconcile --db PATH --account ID` for independent read-only
+inspection. It reports internal discrepancies and projected/open/held amounts without
+changing status or balances. It is not bank verification. A writer/pilot discrepancy
+still prevents approval. Never patch a projection to silence the report. No unhalt
+exists; verified terminal payout recovery does not remove an existing halt.
+
+Before any provider write, immutable policy, effective state and cash/loss holds must
+pass. Commit the claim/dispatch marker before the external call; never wrap a network
+request in SQLite's transaction. Keep stable keys/references and the same provider
+scope. Receipt normalization rejects mixed/live modes, mismatched recipients/amounts,
+fee overruns and ambiguous reads. Busy/SQL/audit failure produces no partial money
+movement. A committed dispatch marker is not proof that the provider received it.
+
+SENDING after a crash must be inspected by read lookup, never resubmitted. UNKNOWN
+and PENDING retain cash and fee allowance. A fee overrun or unresolved mismatch
+requires investigation; it does not free commitments. Provider key retention is
+limited; indefinite local history prevents an unsafe later POST retry. Reconnect and
+reuse the exact command/key to recover a historical response, not authorize another
+spend. Use a new key only for a reviewed new operation after reconciling the old one.
+
+Customer `paid` and redirect-success signals are not usable cleared cash. The network
+adapter leaves PAID_UNCLEARED intact. No bank payout derives from it. The offline
+fixture's clearance method is explicitly forbidden for a network sandbox provider.
+A real clearing integration must compare authoritative available wallet transactions
+and payout/bank status, including refunds/disputes/taxes/fees, before releasing cash.
+
+The example lifetime spending/per-action defaults are synthetic PHP controls. The
+user's real PHP 500 cumulative-loss requirement has not been activated. GoTyme's
+virtual Visa can only be saved on a legitimate supported provider/merchant's secure
+page later; this project has no universal debit-card purchasing connector. Do not
+self-charge a merchant checkout to create experiment funds. Actual supplier/merchant
+integrations require one-off obligation and all-in fee guarantees before live release.
+
+Configure only PayMongo test keys privately on the backend. Never paste credentials
+into chat/PRs or commit .env. Use provider simulator account numbers for tests, not
+real GoTyme details. Readiness displays presence booleans only. This session has no
+sandbox credentials, so the actual network contract smoke check is pending. No API
+account, webhook URL, business registration or deployment was created automatically.
+All default execution flags remain false until separate reviewed live controls exist.

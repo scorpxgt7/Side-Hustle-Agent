@@ -4,7 +4,7 @@ Autonomous opportunity-discovery and capital-allocation platform designed to ide
 
 ## Current status
 
-**Phase 1 — Candidate screening; paper execution and portfolio accounting remain incomplete.** No live brokerage, exchange, payment-card, mining, or withdrawal execution is enabled.
+**Phase 1 — Bounded PAPER lifecycle, independent reconciliation and test-provider integration.** No live brokerage, exchange, payment-card, mining, or withdrawal execution is enabled.
 
 ## Non-negotiable operating rule
 
@@ -60,7 +60,20 @@ profiles use exact cents, with no FX conversion. `PaperLifecycleService` support
 full fills, cancellation, explicit deadline expiry and full settlement. Balanced
 journal records preserve cash, fees, cost-valued positions and P&L; open loss
 capacity remains committed until closure. Known reservation databases migrate
-transactionally to schema v2. See the latest OPERATIONS entry for the API and
-supported cash-flow contracts. Market valuation, full reconciliation/unhalt,
-source freshness, daily orchestration and live funding remain future work;
-the default configuration still has zero capital.
+transactionally to schema v3. See the latest OPERATIONS entry for the API and
+supported cash-flow contracts. `PilotPaperService` adds immutable PHP vendor/budget
+profiles, fresh evidence checks and journaled profit distributions. Reconciliation
+independently reconstructs balances and commitments through a read-only connection.
+Owner payouts reduce cash without counting distributed principal as a trading loss.
+The default configuration still has zero capital and all execution flags false.
+
+Run `python -m src.cli demo --db data/offline_demo.db` for the explicit offline
+expense/income/payout fixture, or `python -m src.cli readiness` for activation blockers.
+PayMongo adapters accept only test keys and documented transfer simulator numbers;
+paid checkout events are not cleared income. No authenticated provider smoke test
+has been run without account-owner test credentials. See
+[the sandbox setup guide](docs/SANDBOX_SETUP.md) before using these APIs.
+
+Verified expense-vendor integration, authoritative wallet/bank reconciliation,
+market valuation, tax/refund reserves, repair/unhalt, actual source discovery,
+daily orchestration, production hosting and reviewed live funding remain incomplete.

@@ -186,7 +186,7 @@ class PaperLifecycleService(PaperAccountService):
                 balances, peak, _ = journal_projection(conn, account_id)
                 changed = conn.execute('''UPDATE paper_accounts SET cash_minor=?,current_equity_minor=?,peak_equity_minor=?,
                     realized_daily_pnl_minor=?,version=version+1 WHERE id=? AND version=?''',
-                    (balances['cash'],balances['cash']+balances['asset'],peak,-balances['income']-balances['expense'],account_id,row['version']))
+                    (balances['cash'],balances['cash']+balances['asset']+balances['equity']+minor_units(limits.total_capital),peak,-balances['income']-balances['expense'],account_id,row['version']))
                 if changed.rowcount != 1:
                     raise RuntimeError('paper account changed inside owned transaction')
             else:
@@ -242,4 +242,7 @@ class PaperLifecycleService(PaperAccountService):
                 return 'Settlement exceeds the retained loss allowance.'
             if row['cash_minor'] + net > MAX_MINOR_UNITS or row['current_equity_minor'] + incremental > MAX_MINOR_UNITS:
                 return 'Settlement would exceed supported account storage.'
+        return self._extra_reject_reason(row, order, position, kind, spec)
+
+    def _extra_reject_reason(self, row, order, position, kind, spec):
         return None

@@ -206,6 +206,9 @@ class PaperAccountService:
         if binding is None:
             self.repository.conn.execute("INSERT INTO paper_observation_currencies VALUES (?,?)", (opportunity.id, currency))
 
+    def _submission_checks(self, row, limits, opportunity, action):
+        return {}
+
     def submit(self, account_id: str, request_id: str, opportunity: Opportunity,
                action: PaperActionSpec, *, expires_at=None) -> ReservationResult:
         validate_identifier(account_id, "account_id")
@@ -270,6 +273,7 @@ class PaperAccountService:
                       "cash_within_deployable_allocation": row["reserved_cash_minor"] + deployed + cash <= minor_units(limits.total_capital) - self._protected(limits),
                       "prospective_daily_loss": row["realized_daily_pnl_minor"] - total_loss > -minor_units(limits.max_daily_loss),
                       "prospective_drawdown": row["peak_equity_minor"] - row["current_equity_minor"] + total_loss < minor_units(limits.max_drawdown)}
+            checks.update(self._submission_checks(row, limits, opportunity, action))
             approved = all(checks.values())
             reason = ("Cash and conservative loss capacity reserved in PAPER mode." if approved else
                       "Failed hard checks: " + ", ".join(key for key, ok in checks.items() if not ok))

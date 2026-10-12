@@ -66,6 +66,7 @@ def journal_projection(connection, account_id):
     """Recompute cash, cost-valued assets, P&L and peak from sealed balanced entries."""
     balances = {bucket: 0 for bucket in BUCKETS}
     peak = 0
+    capital = 0
     entries = connection.execute('SELECT * FROM paper_journal_entries WHERE account_id=? ORDER BY id', (account_id,)).fetchall()
     for entry in entries:
         lines = connection.execute('SELECT line,bucket,side,amount_minor FROM paper_journal_postings WHERE entry_id=? ORDER BY line', (entry['id'],)).fetchall()
@@ -74,9 +75,11 @@ def journal_projection(connection, account_id):
                 or json.loads(entry['postings_json']) != [list(p) for p in postings]
                 or sum(a if s == 'debit' else -a for _, s, a in postings) != 0):
             raise ValueError('unbalanced or altered paper journal')
+        if entry['kind'] == 'GENESIS':
+            capital = sum(a for b, s, a in postings if b == 'cash' and s == 'debit')
         for bucket, side, amount in postings:
             balances[bucket] += amount if side == 'debit' else -amount
-        equity = balances['cash'] + balances['asset']
+        equity = balances['cash'] + balances['asset'] + balances['equity'] + capital
         if balances['cash'] < 0 or balances['asset'] < 0 or equity > MAX_MINOR:
             raise ValueError('invalid journal projection')
         peak = max(peak, equity)
@@ -187,10 +190,12 @@ def projection_matches(connection, row):
                         return False
             else:
                 return False
+        from .paper_payouts import payout_integrity
+        payout_cash, payout_loss, distribution, payout_entries = payout_integrity(connection, row['id'])
         for entry in entries:
             if entry['currency'] != row['currency']:
                 return False
-            if entry['kind'] == 'GENESIS':
+            if entry['kind'] in ('GENESIS','PAYOUT'):
                 continue
             position = positions.get(entry['order_id'])
             if position is None:
@@ -212,13 +217,13 @@ def projection_matches(connection, row):
                 expected = settlement_postings(position['treatment'], position['capital_minor'], position['returned_minor'], position['revenue_minor'], position['exit_fees_minor'])
             if json.loads(entry['postings_json']) != [list(p) for p in expected]:
                 return False
-        if len(entries) != 1 + len(positions) + sum(p['status'] == 'CLOSED' for p in positions.values()):
+        if len(entries) != 1 + payout_entries + len(positions) + sum(p['status'] == 'CLOSED' for p in positions.values()):
             return False
         return (row['cash_minor'] == balances['cash'] and balances['asset'] == asset
-                and row['current_equity_minor'] == balances['cash'] + balances['asset']
+                and row['current_equity_minor'] == balances['cash'] + balances['asset'] + distribution
                 and row['peak_equity_minor'] == peak
                 and row['realized_daily_pnl_minor'] == -balances['income'] - balances['expense']
-                and row['reserved_cash_minor'] == sum(r['cash_minor'] for r in reservations.values())
-                and row['reserved_loss_minor'] == sum(r['loss_minor'] for r in reservations.values()))
+                and row['reserved_cash_minor'] == payout_cash + sum(r['cash_minor'] for r in reservations.values())
+                and row['reserved_loss_minor'] == payout_loss + sum(r['loss_minor'] for r in reservations.values()))
     except (ValueError, TypeError, KeyError, IndexError):
         return False

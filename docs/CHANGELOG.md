@@ -153,3 +153,43 @@ No live execution, payment-card access, external adapters or daily reset is enab
 - Default execution flags remain false. No real funds/card/live/external adapters.
   Next: independent reconciliation reporting, then valuation/day-boundary and reviewed
   repair/unhalt controls, source freshness and daily orchestration before live release.
+
+## 2026-10-12 — Reconciliation/autonomy integration intent
+
+Implement independent read-only reconciliation, a PAPER-only PHP pilot policy,
+fresh-evidence/approved-vendor automation, journaled profit-only payout commitments,
+and test-key-only PayMongo v2 checkout/transfer adapters. Demonstrate the flow with
+synthetic provider fixtures before any external API use. Preserve GoTyme virtual
+Visa as the user's intended expense method and GoTyme account as the intended payout
+destination; do not collect card/account credentials or infer provider eligibility.
+No real charges, deposits, payouts or credential/account provisioning is authorized
+by this implementation step. Keep default execution flags false and document actual
+provider onboarding, sandbox credentials and live-readiness blockers explicitly.
+
+## 2026-10-12 — Reconciliation, bounded PAPER autonomy and test-provider adapters
+
+- Added independent read-only journal/command reconstruction with specific discrepancy
+  reporting and open exposure/hold/spendable-cash totals; no mutation or automatic repair.
+- Added immutable PHP pilot/vendor/route policies, declared evidence freshness checks,
+  cumulative loss and lifetime all-in spending limits that do not reset after gains.
+- Added profit-only synthetic payout reservations and audited state transitions; unknown
+  transfers halt and retain holds. Owner distributions are separated from expense/P&L.
+- Added a transactional v1/v2-to-v3 schema upgrade preserving existing journal/audit
+  identities, plus immutable profile/payout/provider history guards.
+- Added PayMongo test-key-only hosted checkout and v2 transfer/read adapters using
+  documented simulator destinations. Provider resource mode, amount, identity, route
+  and fees validate before booking; raw card/billing bodies and credentials are omitted.
+- Added durable pre-network claims and a dispatch marker, scope binding and read-based
+  recovery. Uncertain POSTs are never automatically repeated after a restart or expired
+  provider deduplication window. Paid checkout is kept separate from cleared income.
+- Added raw-body test webhook authentication, offline provider fixtures, CLI demo,
+  reconciliation/readiness commands and private backend sandbox setup instructions.
+- Recorded the user's GoTyme Visa virtual debit choice without collecting financial
+  credentials; updated active README/PROMPT and appended context/operations/QA.
+- Verification: 249 tests passed locally on Python 3.12.14 / pytest 8.3.5; compilation
+  and whitespace checks passed. The full offline cycle and read-only CLI report ran.
+  Required Python 3.11/3.13 CI must pass on the published head. No test credentials
+  exist in this session, so authenticated PayMongo sandbox API smoke tests are pending.
+- All real execution/card/withdrawal flags remain false. No real funds or profits.
+  Verified merchant purchasing, authoritative wallet/bank clearing, onboarding,
+  hosting/security, tax/refund reserves, strategy evidence and live gates remain blockers.
