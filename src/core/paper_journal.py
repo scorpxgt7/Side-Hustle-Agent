@@ -94,6 +94,16 @@ def projection_matches(connection, row):
     try:
         if not genesis_matches(connection, row):
             return False
+        if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pilot_profiles'").fetchone():
+            profile=connection.execute('SELECT * FROM pilot_profiles WHERE account_id=?',(row['id'],)).fetchone()
+            if profile is not None:
+                from .pilot import PilotPolicy
+                values=json.loads(profile['policy_json'])
+                audit=connection.execute('SELECT * FROM audit_events WHERE event_id=?',(profile['audit_event_id'],)).fetchone()
+                if audit is None or audit['event_type']!='paper_pilot_profile' or audit['entity_id']!=row['id'] or json.loads(audit['payload_json'])!={'synthetic':True,'policy':values}:
+                    return False
+                values['allowed_vendors']=tuple(values['allowed_vendors'])
+                PilotPolicy(**values)
         balances, peak, entries = journal_projection(connection, row['id'])
         original = json.loads(connection.execute('SELECT payload_json FROM audit_events WHERE event_id=?',
                               (row['genesis_event_id'],)).fetchone()[0])

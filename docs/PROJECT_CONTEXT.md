@@ -380,3 +380,12 @@ live release also implement secure hosting/auth/webhook processing/monitoring,
 verified own-bank destination, tax/refund/obligation reserves, strategy evidence,
 discovery/daily orchestration, and reviewed release/unhalt controls. No real-money
 readiness or guaranteed daily income is claimed.
+
+### Shared policy enforcement correction — 2026-10-12
+
+Persisted pilot profiles now apply even through the older PaperAccountService,
+PaperLifecycleService and PaperPayoutService entry points. A worker cannot bypass
+pilot lifetime spending, fixed routes or exit-fee limits by choosing a base service.
+Shared writer integrity and independent reporting also check profile audit linkage;
+corruption halts rather than silently dropping policy. All other sandbox/live
+limitations above remain unchanged. Latest local verification: 253 tests passed.

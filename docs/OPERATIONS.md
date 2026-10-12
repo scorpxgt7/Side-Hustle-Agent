@@ -327,3 +327,10 @@ real GoTyme details. Readiness displays presence booleans only. This session has
 sandbox credentials, so the actual network contract smoke check is pending. No API
 account, webhook URL, business registration or deployment was created automatically.
 All default execution flags remain false until separate reviewed live controls exist.
+
+### Shared profile enforcement — 2026-10-12
+
+Older paper APIs remain callable, but they now enforce any persisted pilot profile
+on that account. Do not instantiate another service to work around a rejected pilot
+command. Profile audit discrepancies halt the account; preserve history and investigate.
+No live-key, new-card or real-destination setup is permitted by these paper helpers.

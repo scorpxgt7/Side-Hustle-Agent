@@ -132,6 +132,9 @@ class PaperPayoutService(PaperAccountService):
         return result
 
     def _payout_policy_ok(self,row,route_ref,fee):
+        if self.repository.conn.execute('SELECT 1 FROM pilot_profiles WHERE account_id=?',(row['id'],)).fetchone():
+            from .pilot import PilotPaperService
+            return PilotPaperService(self.repository,clock=self.clock)._payout_policy_ok(row,route_ref,fee)
         return True
 
     def claim_payout(self,account_id,event_key,payout_id,*,provider_scope=None):

@@ -245,4 +245,7 @@ class PaperLifecycleService(PaperAccountService):
         return self._extra_reject_reason(row, order, position, kind, spec)
 
     def _extra_reject_reason(self, row, order, position, kind, spec):
+        if self.repository.conn.execute('SELECT 1 FROM pilot_profiles WHERE account_id=?',(row['id'],)).fetchone():
+            from .pilot import PilotPaperService
+            return PilotPaperService(self.repository,clock=self.clock)._extra_reject_reason(row,order,position,kind,spec)
         return None

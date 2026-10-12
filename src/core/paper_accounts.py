@@ -207,6 +207,10 @@ class PaperAccountService:
             self.repository.conn.execute("INSERT INTO paper_observation_currencies VALUES (?,?)", (opportunity.id, currency))
 
     def _submission_checks(self, row, limits, opportunity, action):
+        # Persisted profiles apply even when a caller uses the older paper API.
+        if self.repository.conn.execute('SELECT 1 FROM pilot_profiles WHERE account_id=?',(row['id'],)).fetchone():
+            from .pilot import PilotPaperService
+            return PilotPaperService(self.repository,clock=self.clock)._submission_checks(row,limits,opportunity,action)
         return {}
 
     def submit(self, account_id: str, request_id: str, opportunity: Opportunity,

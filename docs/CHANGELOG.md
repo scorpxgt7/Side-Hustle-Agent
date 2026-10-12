@@ -193,3 +193,14 @@ provider onboarding, sandbox credentials and live-readiness blockers explicitly.
 - All real execution/card/withdrawal flags remain false. No real funds or profits.
   Verified merchant purchasing, authoritative wallet/bank clearing, onboarding,
   hosting/security, tax/refund reserves, strategy evidence and live gates remain blockers.
+
+## 2026-10-12 — Close shared pilot-policy API bypasses
+
+Final review found that callers of the older paper account/lifecycle/payout APIs
+could omit the new pilot-service policy hooks. Persisted profiles now apply through
+those shared entry points as well; using another service class cannot reset lifetime
+spend, change the fixed payout route or bypass exit-fee limits. Profile audit
+consistency is checked by shared integrity and independent reconciliation. Added
+regressions for each older API and malformed profile audit; verification: 253 tests
+passed locally, source compilation and diff whitespace checks passed. No execution
+flags or provider credentials changed. Authenticated sandbox smoke tests remain pending.

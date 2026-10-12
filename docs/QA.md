@@ -224,3 +224,11 @@ expense vendor and own-bank route, credentials/onboarding, deployment/webhook se
 tax/refund/obligation reserves, market/source truth, strategy evidence, day/scheduler
 controls, reviewed repair/unhalt and separately reviewed activation. No real card
 charge, customer income, deposit or payout occurred.
+
+### Final review regression verification — 2026-10-12
+
+Latest local result: **253 passed** on Python 3.12.14 / pytest 8.3.5. Source compilation
+and diff whitespace checks passed. Additional tests prove that older submission,
+settlement and payout entry points cannot bypass persisted lifetime-spend/fee/route
+policies; corrupt pilot audits are reported independently and halt through the older
+account API. Check Python 3.11/3.13 CI on the updated head, not the earlier 249-test head.

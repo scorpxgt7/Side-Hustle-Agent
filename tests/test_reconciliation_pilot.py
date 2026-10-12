@@ -290,3 +290,48 @@ def test_bad_v2_migration_leaves_all_original_history_intact(tmp_path):
     assert conn.execute('SELECT version,checksum FROM paper_schema').fetchone()==(2,V2_CHECKSUM)
     assert conn.execute("SELECT name,sql FROM sqlite_master ORDER BY name").fetchall()==before
     conn.close()
+
+
+def test_legacy_submission_api_cannot_bypass_persisted_pilot_budget(pilot):
+    from src.core.paper_accounts import canonical_json
+    repo,service=pilot
+    for n in range(9):
+        experiment(service,str(n))
+    original=candidate('bypass')
+    ev=evidence()
+    from src.core.paper_lifecycle import utc_timestamp
+    source=canonical_json({'source_url':ev.source_url,'observed_at':utc_timestamp(ev.observed_at),
+                           'expires_at':utc_timestamp(ev.expires_at),'vendor_ref':ev.vendor_ref})
+    legacy=PaperAccountService(repo,clock=lambda:NOW)
+    result=legacy.submit('demo','legacy',replace(original,source=source),PaperActionSpec('PHP',D('50'),D('50'),'expensed'),expires_at=ev.expires_at)
+    assert result.status=='REJECTED' and not result.checks['pilot_lifetime_spend']
+
+
+def test_legacy_payout_api_cannot_change_a_pilot_route(pilot):
+    from src.core.paper_payouts import PaperPayoutService
+    repo,service=pilot
+    experiment(service)
+    assert PaperPayoutService(repo).request_payout('demo','bypass','route_other',D('35'),D('10'))['status']=='REJECTED'
+    assert service.get_account('demo').reserved_cash==0
+
+
+def test_legacy_lifecycle_api_cannot_exceed_pilot_exit_fee_budget(tmp_path):
+    from src.core.paper_lifecycle import PaperLifecycleService
+    repo=Repository(tmp_path/'limited.db')
+    service=PilotPaperService(repo,clock=lambda:NOW)
+    service.create_account('demo',limits())
+    service.create_profile('demo',PilotPolicy(('vendor_fixture',),'route_gotyme_test',lifetime_spend_minor=5000))
+    order=experiment(service,settle=False)
+    result=PaperLifecycleService(repo,clock=lambda:NOW).settle('demo','bypass',order,PaperSettlementSpec('PHP',D('0'),D('100'),D('1')),expected_version=1)
+    assert result.status=='REJECTED' and 'lifetime' in result.reason
+    assert service.get_account('demo').cash==D('450')
+    repo.close()
+
+
+def test_corrupt_pilot_audit_halts_even_through_older_api(pilot):
+    repo,service=pilot
+    with repo.transaction():
+        repo.conn.execute("UPDATE audit_events SET payload_json='{}' WHERE event_type='paper_pilot_profile'")
+    report=reconcile_path(repo.path,'demo')
+    assert not report.ok and 'pilot_policy_audit' in report.discrepancies
+    assert PaperAccountService(repo).get_account('demo').status=='HALTED'

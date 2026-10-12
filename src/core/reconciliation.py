@@ -87,6 +87,11 @@ def reconcile_connection(conn,account_id):
                 or audit['limits']!=json.loads(row['limits_json'])):
             fail('genesis_mismatch')
         expected_entries[row['genesis_event_id']] = ('GENESIS',None,[['cash','debit',capital],['equity','credit',capital]])
+        profile=conn.execute('SELECT * FROM pilot_profiles WHERE account_id=?',(account_id,)).fetchone()
+        if profile is not None:
+            profile_audit=conn.execute('SELECT * FROM audit_events WHERE event_id=?',(profile['audit_event_id'],)).fetchone()
+            if profile_audit is None or profile_audit['event_type']!='paper_pilot_profile' or profile_audit['entity_id']!=account_id or json.loads(profile_audit['payload_json'])!={'synthetic':True,'policy':json.loads(profile['policy_json'])}:
+                fail('pilot_policy_audit')
         orders = conn.execute('SELECT * FROM paper_orders WHERE account_id=?',(account_id,)).fetchall()
         reservations = {r['order_id']:r for r in conn.execute('SELECT * FROM capital_reservations WHERE account_id=?',(account_id,))}
         positions = {p['order_id']:p for p in conn.execute('SELECT * FROM paper_positions WHERE account_id=?',(account_id,))}
