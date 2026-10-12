@@ -73,3 +73,22 @@
 - Verification: 37 tests passed on Python 3.11.9; source compilation passed.
 - Live execution remains disabled. No secrets introduced. Portfolio reservations,
   reconciliation, source freshness and live-release controls remain out of scope.
+
+## 2026-10-12 — Close PR #2 review defects
+
+- Closed the zero daily-loss-budget loophole, including portfolios with gains.
+- Added exact rational intermediates for Decimal outcome/control arithmetic and
+  a fully specified 50-digit ratio context; caller settings cannot change results.
+- Bounded Decimal coefficient digits, exponent and adjusted magnitude to prevent
+  unsupported arithmetic sizes. Paper balance updates validate before mutation.
+- Rejected negative persisted ledger amounts, unsupported operation kinds and
+  invalid opportunity/event IDs. Decision references must match their opportunity.
+- Added effective opportunity/limits/state/evaluation snapshots, checks, decision
+  ID and arithmetic/risk versions to the existing atomic audit transaction.
+- Corrected the active build prompt's EV rule and current README phase status;
+  appended authoritative context, procedures and QA coverage without rewriting history.
+- Verification: 71 tests passed locally on Python 3.12.14 with pytest 8.3.5;
+  source compilation and git diff whitespace checks passed. Python 3.11/3.13
+  remain the required CI matrix; inspect their status on the latest PR head.
+- No execution capabilities enabled. Paper reservations, lifecycle, reconciliation,
+  freshness checks and live release remain future work.

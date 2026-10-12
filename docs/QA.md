@@ -76,3 +76,29 @@ Added regression coverage:
 
 Reliability gates above for stale data, kill switch and reconciliation are future
 live-release gates, not implemented Phase 1 capabilities.
+
+## PR #2 review regression verification — 2026-10-12
+
+Local Python 3.12.14 / pytest 8.3.5: **71 passed**. Source compilation and
+git diff whitespace checks passed. Required CI remains Python 3.11 and 3.13;
+check both jobs on the latest PR head before merge.
+
+New regression coverage:
+- Zero loss budget with negative, zero and positive P&L; persisted rejection.
+- Positive daily-loss equality/breach, exact drawdown equality and capital sums
+  whose small increments disappear at ordinary Decimal precision.
+- Altered caller precision, rounding, exponent limits and Inexact/Rounded traps;
+  EV, controls, ratios and balances remain invariant without caller signal flags.
+- Small positive scores at supported size extremes remain positive.
+- Unsupported numeric sizes reject before writes/mutation; result overflow leaves
+  the prior paper balance intact.
+- Invalid opportunity/event IDs and negative/unknown ledger operations do not
+  persist; invalid writes roll back related caller-transaction records.
+- Decision opportunity reference mismatch is rejected.
+- Full audit input snapshots reconstruct accepted/rejected decisions after reopen,
+  including the effective default state, row ID and rule/arithmetic policy versions.
+
+Earlier aggregate-capital checkboxes cover caller-supplied screening snapshots,
+not reservations, cross-day exposure or concurrent allocation. Those capabilities,
+paper order idempotency, reconciliation, freshness, kill switch and live gates
+remain unimplemented. PHP 500 has not been funded or activated as a runtime limit.

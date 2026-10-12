@@ -161,3 +161,40 @@ Callers supply allocated_today, realized P&L and equity; PAPER_TEST does not res
 capital. Cross-day open exposure, order lifecycle, reconciliation, stale-source
 checks, kill switch, and strategy calibration remain future work. Do not treat the
 recording ledger as reconciled double-entry accounting. No live-readiness claim.
+
+## Current state and review corrections — 2026-10-12
+
+This dated entry is authoritative for current behavior and next work. Earlier
+phase/status/next-step sections remain historical records. Current phase is
+**Phase 1 candidate screening; paper execution and portfolio accounting incomplete**.
+
+- Zero daily-loss budgets reject every candidate, including after realized gains.
+  Equality at positive daily-loss/drawdown limits also rejects candidates.
+- Outcome EV, net, deployable capital, drawdown, allocation sums and paper balance
+  changes are exact. Decimal inputs/outputs use exact Fraction intermediates;
+  no binary floats or ambient Decimal arithmetic determine these values.
+- Inputs accept at most 64 coefficient digits; stored exponent and adjusted
+  magnitude must lie in [-128, 128]. Unsupported sizes raise ValueError.
+- Return on capital and risk-adjusted score are computed from exact ratios and
+  rendered independently at 50 significant digits, ROUND_HALF_EVEN, under the
+  versioned exact-decimal-v1 policy. Caller precision, rounding and traps do not
+  affect results. The input bounds keep supported positive scores representable.
+- IDs must be nonempty strings without whitespace/control characters. Model and
+  repository boundaries reject invalid opportunity/event identifiers before writes.
+- Recording-ledger operations accept only credit/debit with nonnegative bounded
+  Decimal magnitudes. This still does not reconcile cash or enforce debit solvency.
+- Each new decision audit stores its decision-row ID, full effective opportunity,
+  CapitalLimits, PortfolioState, evaluation, checks and arithmetic/risk-rule version.
+  Historical audits are retained without fabricated input backfills.
+- There is no database schema migration for these fixes: audit snapshots use the
+  existing JSON payload. Direct save_decision now returns the inserted integer ID.
+
+The user has selected PHP 500 as the cumulative maximum loss for a future first
+live pilot and a real physical debit card dedicated to testing as a potential
+funding source. This is not a deposit, a daily allowance or payment approval.
+No issuer/provider or actual capital amount is selected. Default synthetic config
+remains USD with zero capital; do not interpret PHP 500 as a USD configuration value.
+
+Next: persisted paper-account state and atomic reservations, then order/position
+lifecycle, reconciliation and freshness controls under the documented release gates.
+Live execution, card access and withdrawals remain disabled.

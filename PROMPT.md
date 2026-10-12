@@ -160,7 +160,11 @@ Calculate:
 
 `expected_net = expected_revenue - all_expected_costs`
 
-`expected_value = expected_net * probability_of_success`
+`expected_value = p * (success_revenue - cost) + (1-p) * (failure_revenue - cost - additional_failure_cost)`
+
+Success revenue is conditional on success; common costs are paid in both outcomes.
+Required capital is a sizing input, not an automatic expense. Model principal loss
+explicitly and exactly once when applicable. Taxes remain explicit assumptions.
 
 Include, when relevant:
 
@@ -178,7 +182,9 @@ Include, when relevant:
 - failed-attempt cost
 - opportunity cost
 
-Use Decimal/fixed-point monetary arithmetic.
+Use Decimal inputs/outputs and exact control/outcome arithmetic independent of
+caller precision, rounding, exponent settings and traps. Apply a documented,
+versioned policy to reporting ratios. Reject unsupported numeric sizes/scales.
 
 ### 5. Risk Governor
 
@@ -234,6 +240,8 @@ Every important decision must be reconstructable.
 Record:
 
 - input opportunity
+- effective capital limits and portfolio state
+- decision ID and arithmetic/risk-rule version
 - evidence
 - model/version
 - deterministic checks
@@ -242,6 +250,11 @@ Record:
 - resulting state
 
 Never log secrets.
+
+The current repository implements Phase 1 candidate screening. Paper orders,
+reservations, integrated accounting, reconciliation and live execution remain
+future work. Use the latest dated PROJECT_CONTEXT entry as the current state;
+older entries remain historical records.
 
 ### 9. Human Approval Boundary
 

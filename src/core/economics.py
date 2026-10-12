@@ -1,6 +1,8 @@
 """Deterministic economic evaluation for candidate opportunities."""
 from dataclasses import dataclass
 from decimal import Decimal
+from fractions import Fraction
+from .arithmetic import rounded_ratio
 from .models import Opportunity
 
 
@@ -29,10 +31,12 @@ class EconomicEvaluator:
 
         net = opportunity.expected_net
         ev = opportunity.expected_value
-        roc = ev / opportunity.required_capital
+        exact_roc = Fraction(ev) / Fraction(opportunity.required_capital)
+        roc = rounded_ratio(exact_roc)
         # Confidence and liquidity reduce the score but never create profitability.
-        score = roc * opportunity.confidence * opportunity.liquidity_score
-        viable = ev > 0 and score > 0
+        exact_score = exact_roc * Fraction(opportunity.confidence) * Fraction(opportunity.liquidity_score)
+        score = rounded_ratio(exact_score)
+        viable = ev > 0 and exact_score > 0
         return EconomicEvaluation(
             opportunity.id,
             opportunity.expected_revenue,

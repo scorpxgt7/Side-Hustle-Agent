@@ -4,7 +4,7 @@ Autonomous opportunity-discovery and capital-allocation platform designed to ide
 
 ## Current status
 
-**Phase 0 — Architecture and paper mode.** No live brokerage, exchange, payment-card, mining, or withdrawal execution is enabled.
+**Phase 1 — Candidate screening; paper execution and portfolio accounting remain incomplete.** No live brokerage, exchange, payment-card, mining, or withdrawal execution is enabled.
 
 ## Non-negotiable operating rule
 
@@ -46,3 +46,9 @@ python -m compileall -q src
 CI runs tests on Python 3.11 and 3.13. Source, configuration, docs, and tests
 are restored from the Phase 1 archive; archives remain historical references.
 See docs/PROJECT_CONTEXT.md for outcome semantics and remaining limitations.
+
+Control arithmetic and outcome EV are exact and independent of caller Decimal
+settings. Reporting ratios use a versioned 50-digit policy. Inputs are bounded
+to 64 coefficient digits and exponents/magnitudes within [-128, 128]. Decision
+audits include the effective limits, portfolio state, evaluation and decision ID.
+The most recent dated PROJECT_CONTEXT entry supersedes historical phase labels.

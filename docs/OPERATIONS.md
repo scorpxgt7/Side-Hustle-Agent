@@ -97,3 +97,28 @@ failure assumptions and must not be inferred as newly evaluated observations.
 
 PortfolioState remains externally supplied and must include relevant allocation.
 Screening does not move or reserve money. No daily runner or live mode is available.
+
+## Review correction procedures — 2026-10-12
+
+Input Decimal values require at most 64 coefficient digits and an exponent and
+adjusted magnitude within [-128, 128]. Do not silently quantize unsupported inputs.
+Control/EV arithmetic is exact; ratio reporting uses exact-decimal-v1 (50 digits,
+ROUND_HALF_EVEN, isolated exponent/trap settings). Changing caller Decimal context
+must not change screening or paper balances. Paper updates validate both existing
+balance and result before replacing the balance.
+
+Use whitespace/control-free, nonempty string identifiers. Repository.ledger now
+accepts only credit/debit and nonnegative magnitudes; zero remains valid. Event ID
+uniqueness still rejects duplicates. These API checks do not make the recording
+ledger a reconciled account or authorize arbitrary debits.
+
+Repository.save_decision returns its integer row ID and rejects a mismatched
+opportunity reference. Phase1Engine materializes the effective default state once
+and stores full snapshots plus this ID in the same opportunity/decision/audit
+transaction. Audit payload schema_version is 1, rule_version is phase1-screening-v2.
+Older payloads lack these inputs; treat them as historical incomplete records.
+No schema migration/backfill is required. Keep caller-managed direct transactions.
+
+PHP 500 is the user-specified future cumulative pilot loss ceiling, not funded
+capital. Funding integration and per-action policy are not implemented. Keep the
+zero-capital PAPER default and all execution flags false.

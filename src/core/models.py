@@ -2,12 +2,19 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
+from fractions import Fraction
 from typing import Optional
+from .arithmetic import exact_decimal, exact_subtract, validate_decimal
 
 
 def finite_decimal(value, name):
-    if not isinstance(value, Decimal) or not value.is_finite():
-        raise ValueError(f"{name} must be a finite Decimal")
+    validate_decimal(value, name)
+
+
+def validate_identifier(value, name="id"):
+    if (not isinstance(value, str) or not value
+            or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value)):
+        raise ValueError(f"{name} must be a non-empty string without whitespace/control characters")
 
 
 def validate_fields(instance, nonnegative=(), ratios=(), positive=()):
@@ -58,6 +65,7 @@ class Opportunity:
     leverage: Decimal = Decimal("1")
 
     def __post_init__(self):
+        validate_identifier(self.id)
         validate_fields(self,
             nonnegative=("expected_revenue", "expected_cost", "failure_revenue", "failure_cost"),
             ratios=("estimated_probability", "confidence", "liquidity_score"),
@@ -67,13 +75,15 @@ class Opportunity:
 
     @property
     def expected_net(self) -> Decimal:
-        return self.expected_revenue - self.expected_cost
+        return exact_subtract(self.expected_revenue, self.expected_cost)
 
     @property
     def expected_value(self) -> Decimal:
-        p = self.estimated_probability
-        return p * self.expected_net + (1 - p) * (
-            self.failure_revenue - self.expected_cost - self.failure_cost)
+        p = Fraction(self.estimated_probability)
+        success = Fraction(self.expected_revenue) - Fraction(self.expected_cost)
+        failure = (Fraction(self.failure_revenue) - Fraction(self.expected_cost)
+                   - Fraction(self.failure_cost))
+        return exact_decimal(p * success + (1 - p) * failure)
 
 
 @dataclass(frozen=True)
@@ -94,7 +104,7 @@ class CapitalLimits:
 
     @property
     def deployable_capital(self) -> Decimal:
-        return self.total_capital * (Decimal("1") - self.reserve_ratio)
+        return exact_decimal(Fraction(self.total_capital) * (1 - Fraction(self.reserve_ratio)))
 
 
 @dataclass(frozen=True)
@@ -114,7 +124,7 @@ class PortfolioState:
     def drawdown(self) -> Decimal:
         if self.peak_equity <= 0:
             return Decimal("0")
-        return max(Decimal("0"), self.peak_equity - self.current_equity)
+        return max(Decimal("0"), exact_subtract(self.peak_equity, self.current_equity))
 
 
 @dataclass

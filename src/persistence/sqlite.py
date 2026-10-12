@@ -4,6 +4,7 @@ import sqlite3
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from src.core.models import finite_decimal, validate_identifier
 
 
 class Repository:
@@ -52,6 +53,7 @@ class Repository:
         return format(value, "f")
 
     def save_opportunity(self, o: Any) -> None:
+        validate_identifier(o.id, "opportunity_id")
         self.conn.execute("""INSERT INTO opportunities
         (id,type,title,required_capital,expected_revenue,expected_cost,probability,liquidity_score,confidence,source)
         VALUES (?,?,?,?,?,?,?,?,?,?)""", (
@@ -63,17 +65,29 @@ class Repository:
         self.conn.execute("INSERT INTO opportunity_outcomes VALUES (?,?,?,?)",
                           (o.id, self._decimal(o.failure_revenue), self._decimal(o.failure_cost), self._decimal(o.leverage)))
 
-    def save_decision(self, opportunity_id: str, decision: Any) -> None:
-        self.conn.execute("INSERT INTO decisions(opportunity_id,decision,reason,checks_json) VALUES (?,?,?,?)",
+    def save_decision(self, opportunity_id: str, decision: Any) -> int:
+        validate_identifier(opportunity_id, "opportunity_id")
+        if decision.opportunity_id != opportunity_id:
+            raise ValueError("decision opportunity_id must match the persisted opportunity")
+        cursor = self.conn.execute("INSERT INTO decisions(opportunity_id,decision,reason,checks_json) VALUES (?,?,?,?)",
                           (opportunity_id, decision.decision.value, decision.reason, json.dumps(decision.checks, sort_keys=True)))
+        return cursor.lastrowid
 
     def audit(self, event_id: str, event_type: str, entity_id: str | None, payload: dict) -> None:
+        validate_identifier(event_id, "event_id")
+        validate_identifier(event_type, "event_type")
+        if entity_id is not None:
+            validate_identifier(entity_id, "entity_id")
         self.conn.execute("INSERT INTO audit_events(event_id,event_type,entity_id,payload_json) VALUES (?,?,?,?)",
                           (event_id, event_type, entity_id, json.dumps(payload, sort_keys=True, default=str)))
 
     def ledger(self, event_id: str, kind: str, amount: Decimal, currency: str = "USD", reference: str | None = None) -> None:
-        from src.core.models import finite_decimal
+        validate_identifier(event_id, "event_id")
+        if kind not in ("credit", "debit"):
+            raise ValueError("ledger kind must be credit or debit")
         finite_decimal(amount, "amount")
+        if amount < 0:
+            raise ValueError("ledger amount must be non-negative")
         self.conn.execute("INSERT INTO ledger(event_id,kind,amount,currency,reference) VALUES (?,?,?,?,?)",
                           (event_id, kind, self._decimal(amount), currency, reference))
 

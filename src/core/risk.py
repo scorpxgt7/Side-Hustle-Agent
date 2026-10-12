@@ -1,7 +1,10 @@
 """Deterministic risk governor. LLM output cannot override these checks."""
 from decimal import Decimal
+from .arithmetic import exact_add
 from .economics import EconomicEvaluation, EconomicEvaluator
 from .models import CapitalLimits, Decision, Opportunity, PortfolioState, RiskDecision
+
+RISK_RULE_VERSION = "phase1-screening-v2"
 
 
 class RiskGovernor:
@@ -18,14 +21,14 @@ class RiskGovernor:
             "evaluation_matches": evaluation is None or evaluation == canonical,
             "capital_positive": opportunity.required_capital > 0,
             "within_single_allocation": opportunity.required_capital <= limits.max_single_allocation,
-            "within_deployable_capital": state.allocated_today + opportunity.required_capital <= limits.deployable_capital,
+            "within_deployable_capital": exact_add(state.allocated_today, opportunity.required_capital) <= limits.deployable_capital,
             "probability_valid": Decimal("0") <= opportunity.estimated_probability <= Decimal("1"),
             "confidence_valid": Decimal("0") <= opportunity.confidence <= Decimal("1"),
             "liquidity_valid": Decimal("0") <= opportunity.liquidity_score <= Decimal("1"),
-            "daily_loss_limit": state.realized_daily_pnl > -limits.max_daily_loss,
+            "daily_loss_limit": limits.max_daily_loss > 0 and state.realized_daily_pnl > limits.max_daily_loss.copy_negate(),
             "drawdown_limit": state.drawdown < limits.max_drawdown,
             "leverage_limit": opportunity.leverage <= limits.max_leverage,
-            "positive_expected_value": opportunity.expected_value > 0,
+            "positive_expected_value": canonical.expected_value > 0,
         }
         checks["positive_risk_adjusted_score"] = canonical.risk_adjusted_score > 0
 
