@@ -1,9 +1,8 @@
-"""Additive paper-reservation schema; never infer accounts from the legacy ledger."""
+"""Versioned synthetic accounting schema. Known v1 upgrades are all-or-nothing."""
 from hashlib import sha256
+import json
 
-SCHEMA_VERSION = 1
-TABLES = {"paper_schema", "paper_accounts", "paper_observation_currencies", "paper_requests", "paper_orders", "capital_reservations"}
-STATEMENTS = (
+V1_STATEMENTS = (
     """CREATE TABLE paper_schema (
         id INTEGER PRIMARY KEY CHECK(id = 1), version INTEGER NOT NULL,
         checksum TEXT NOT NULL)""",
@@ -45,26 +44,128 @@ STATEMENTS = (
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(order_id, account_id) REFERENCES paper_orders(id, account_id))""",
 )
+V1_CHECKSUM = sha256("\n".join(V1_STATEMENTS).encode()).hexdigest()
+V1_TABLES = {"paper_schema", "paper_accounts", "paper_observation_currencies",
+             "paper_requests", "paper_orders", "capital_reservations"}
+ORDER_DDL = V1_STATEMENTS[4].replace("CHECK(status = 'RESERVED')",
+    "CHECK(status IN ('RESERVED','FILLED','CANCELLED','EXPIRED','CLOSED'))").replace(
+    "created_at TEXT", "version INTEGER NOT NULL DEFAULT 0 CHECK(typeof(version)='integer' AND version>=0), expires_at TEXT, created_at TEXT")
+EXTRA_STATEMENTS = (
+    """CREATE TABLE paper_positions (
+        order_id TEXT PRIMARY KEY NOT NULL, account_id TEXT NOT NULL,
+        treatment TEXT NOT NULL CHECK(treatment IN ('refundable','expensed')),
+        capital_minor INTEGER NOT NULL CHECK(typeof(capital_minor)='integer' AND capital_minor>0),
+        fees_minor INTEGER NOT NULL CHECK(typeof(fees_minor)='integer' AND fees_minor>=0),
+        cash_spent_minor INTEGER NOT NULL CHECK(typeof(cash_spent_minor)='integer' AND cash_spent_minor>0),
+        entry_expense_minor INTEGER NOT NULL CHECK(typeof(entry_expense_minor)='integer' AND entry_expense_minor>=0),
+        loss_minor INTEGER NOT NULL CHECK(typeof(loss_minor)='integer' AND loss_minor>=0),
+        status TEXT NOT NULL CHECK(status IN ('OPEN','CLOSED')),
+        returned_minor INTEGER, revenue_minor INTEGER, exit_fees_minor INTEGER, pnl_minor INTEGER,
+        FOREIGN KEY(order_id,account_id) REFERENCES paper_orders(id,account_id),
+        CHECK(cash_spent_minor=capital_minor+fees_minor),
+        CHECK((status='OPEN' AND returned_minor IS NULL AND revenue_minor IS NULL AND exit_fees_minor IS NULL AND pnl_minor IS NULL)
+           OR (status='CLOSED' AND typeof(returned_minor)='integer' AND returned_minor>=0
+               AND typeof(revenue_minor)='integer' AND revenue_minor>=0
+               AND typeof(exit_fees_minor)='integer' AND exit_fees_minor>=0 AND typeof(pnl_minor)='integer')))""",
+    """CREATE TABLE paper_lifecycle_events (
+        account_id TEXT NOT NULL, event_key TEXT NOT NULL, order_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK(kind IN ('FILL','CANCEL','EXPIRE','SETTLE')),
+        payload_digest TEXT NOT NULL, payload_json TEXT NOT NULL, result_json TEXT NOT NULL,
+        audit_event_id TEXT NOT NULL UNIQUE REFERENCES audit_events(event_id) DEFERRABLE INITIALLY DEFERRED,
+        PRIMARY KEY(account_id,event_key),
+        FOREIGN KEY(order_id,account_id) REFERENCES paper_orders(id,account_id))""",
+    """CREATE TABLE paper_journal_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, account_id TEXT NOT NULL REFERENCES paper_accounts(id),
+        order_id TEXT, event_id TEXT NOT NULL UNIQUE REFERENCES audit_events(event_id) DEFERRABLE INITIALLY DEFERRED,
+        kind TEXT NOT NULL CHECK(kind IN ('GENESIS','FILL','SETTLEMENT')),
+        currency TEXT NOT NULL CHECK(currency IN ('PHP','USD')), postings_json TEXT NOT NULL,
+        UNIQUE(order_id,kind), FOREIGN KEY(order_id,account_id) REFERENCES paper_orders(id,account_id),
+        CHECK((kind='GENESIS' AND order_id IS NULL) OR (kind!='GENESIS' AND order_id IS NOT NULL)))""",
+    """CREATE TABLE paper_journal_postings (
+        entry_id INTEGER NOT NULL REFERENCES paper_journal_entries(id), line INTEGER NOT NULL,
+        bucket TEXT NOT NULL CHECK(bucket IN ('cash','asset','equity','income','expense')),
+        side TEXT NOT NULL CHECK(side IN ('debit','credit')),
+        amount_minor INTEGER NOT NULL CHECK(typeof(amount_minor)='integer' AND amount_minor>=0),
+        PRIMARY KEY(entry_id,line))""",
+)
+TRIGGER_STATEMENTS = tuple(
+    f"CREATE TRIGGER {table}_{operation.lower()}_blocked BEFORE {operation} ON {table} "
+    "BEGIN SELECT RAISE(ABORT,'paper accounting history is immutable'); END"
+    for table in ("paper_journal_entries", "paper_journal_postings", "paper_lifecycle_events")
+    for operation in ("UPDATE", "DELETE"))
+STATEMENTS = (*V1_STATEMENTS[:4], ORDER_DDL, V1_STATEMENTS[5], *EXTRA_STATEMENTS, *TRIGGER_STATEMENTS)
+SCHEMA_VERSION = 2
 SCHEMA_CHECKSUM = sha256("\n".join(STATEMENTS).encode()).hexdigest()
+TABLES = V1_TABLES | {"paper_positions", "paper_lifecycle_events", "paper_journal_entries", "paper_journal_postings"}
+TRIGGERS = {f"{table}_{operation}_blocked" for table in
+            ("paper_journal_entries", "paper_journal_postings", "paper_lifecycle_events")
+            for operation in ("update", "delete")}
 
 
 def validate_paper_schema(connection):
     names = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if "paper_schema" in names:
         rows = connection.execute("SELECT id,version,checksum FROM paper_schema").fetchall()
-        if (len(rows) != 1 or tuple(rows[0]) != (1, SCHEMA_VERSION, SCHEMA_CHECKSUM)
-                or not TABLES <= names):
+        if len(rows) != 1:
             raise RuntimeError("unsupported or incomplete paper schema; writes disabled")
-        return True
+        metadata = tuple(rows[0])
+        if metadata == (1, 1, V1_CHECKSUM) and V1_TABLES <= names and not (TABLES - V1_TABLES) & names:
+            return 1
+        triggers = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='trigger'")}
+        if metadata == (1, SCHEMA_VERSION, SCHEMA_CHECKSUM) and TABLES <= names and TRIGGERS <= triggers:
+            return 2
+        raise RuntimeError("unsupported or incomplete paper schema; writes disabled")
     if TABLES & names:
         raise RuntimeError("unversioned paper tables; migration requires investigation")
-    return False
+    return 0
 
 
 def initialize_paper_schema(repository):
+    from src.core.paper_journal import genesis_matches, post_journal, projection_matches
     with repository.transaction():
-        if validate_paper_schema(repository.conn):
+        version = validate_paper_schema(repository.conn)
+        if version == 2:
             return
-        for statement in STATEMENTS:
+        if version == 0:
+            for statement in STATEMENTS:
+                repository.conn.execute(statement)
+            repository.conn.execute("INSERT INTO paper_schema VALUES (1,?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM))
+            return
+        if repository.conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise RuntimeError("paper migration foreign key discrepancy")
+        accounts = repository.conn.execute("SELECT * FROM paper_accounts").fetchall()
+        # v1 has never spent cash: only an intact genesis and reservation projection can be upgraded.
+        for row in accounts:
+            reservations = repository.conn.execute("SELECT * FROM capital_reservations WHERE account_id=?", (row['id'],)).fetchall()
+            orders = repository.conn.execute("SELECT id,status FROM paper_orders WHERE account_id=?", (row['id'],)).fetchall()
+            if (not genesis_matches(repository.conn, row) or
+                    not row['cash_minor'] == row['peak_equity_minor'] == row['current_equity_minor'] or
+                    row['cash_minor'] != json.loads(repository.conn.execute(
+                        'SELECT payload_json FROM audit_events WHERE event_id=?', (row['genesis_event_id'],)).fetchone()[0])['cash_minor'] or
+                    row['realized_daily_pnl_minor'] != 0 or
+                    {r['order_id'] for r in reservations} != {o['id'] for o in orders} or
+                    any(o['status'] != 'RESERVED' for o in orders) or
+                    row['reserved_cash_minor'] != sum(r['cash_minor'] for r in reservations) or
+                    row['reserved_loss_minor'] != sum(r['loss_minor'] for r in reservations)):
+                raise RuntimeError("v1 account discrepancy; migration aborted without changes")
+        # Rebuild the two dependent tables together while keeping foreign keys enabled.
+        reservations = repository.conn.execute("SELECT * FROM capital_reservations").fetchall()
+        repository.conn.execute(ORDER_DDL.replace("CREATE TABLE paper_orders", "CREATE TABLE paper_orders_v2", 1))
+        repository.conn.execute("""INSERT INTO paper_orders_v2(id,account_id,request_id,opportunity_id,decision_id,status,created_at)
+            SELECT id,account_id,request_id,opportunity_id,decision_id,status,created_at FROM paper_orders""")
+        repository.conn.execute("DROP TABLE capital_reservations")
+        repository.conn.execute("DROP TABLE paper_orders")
+        repository.conn.execute("ALTER TABLE paper_orders_v2 RENAME TO paper_orders")
+        repository.conn.execute(V1_STATEMENTS[5])
+        repository.conn.executemany("INSERT INTO capital_reservations(order_id,account_id,cash_minor,loss_minor,created_at) VALUES (?,?,?,?,?)",
+                                   [tuple(r) for r in reservations])
+        for statement in (*EXTRA_STATEMENTS, *TRIGGER_STATEMENTS):
             repository.conn.execute(statement)
-        repository.conn.execute("INSERT INTO paper_schema VALUES (1,?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM))
+        for row in accounts:
+            post_journal(repository, row['id'], row['genesis_event_id'], 'GENESIS', None,
+                         [('cash','debit',row['cash_minor']), ('equity','credit',row['cash_minor'])])
+        if any(not projection_matches(repository.conn, row) for row in accounts):
+            raise RuntimeError("v1 history discrepancy; migration aborted without changes")
+        if repository.conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise RuntimeError("paper migration foreign key discrepancy")
+        repository.conn.execute("UPDATE paper_schema SET version=?,checksum=? WHERE id=1", (SCHEMA_VERSION, SCHEMA_CHECKSUM))

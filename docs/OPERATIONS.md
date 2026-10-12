@@ -194,3 +194,82 @@ than discarding committed actions with an older snapshot.
 
 Default config stays PAPER/zero capital with card/live/withdrawal flags false.
 Source freshness, full accounting reconciliation and real-money funding remain absent.
+
+## Paper lifecycle/accounting procedures — 2026-10-12
+
+This section supersedes the reservation-only restrictions above. Use the same
+isolated synthetic account and full observations; nothing here connects real funds.
+PaperLifecycleService also provides create_account, submit, get_account and halt.
+
+```python
+from decimal import Decimal as D
+from datetime import datetime, timedelta, timezone
+from src.core.paper_lifecycle import (
+    PaperLifecycleService, PaperFillSpec, PaperSettlementSpec,
+)
+
+service = PaperLifecycleService(repo)  # Existing synthetic demo account/repository.
+reserved = service.submit(
+    "demo", "request-002", new_opportunity, new_action,
+    expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+)
+if reserved.status == "RESERVED":
+    order = service.get_order("demo", reserved.order_id)
+    filled = service.fill(
+        "demo", "fill-002", order.order_id,
+        PaperFillSpec("PHP", D("60"), D("5")),  # Full principal plus entry fees.
+        expected_version=order.version,
+    )
+    if filled.status == "FILLED":
+        settled = service.settle(
+            "demo", "settle-002", order.order_id,
+            PaperSettlementSpec("PHP", D("60"), D("20"), D("2")),
+            expected_version=filled.order_version,
+        )
+```
+
+This example requires an all-in cash reservation of at least 65. With refundable
+principal, settlement returns 60 principal plus 20 revenue less 2 exit fees; total
+position profit is 13 after 5 entry fees. Expensed purchases instead use zero
+capital_return and put all gross sale receipts in revenue. A zero-return/zero-revenue
+settlement records the supported write-off. Supply actual simulated costs/receipts,
+not forecasts relabeled as realized income. Exit fees cannot exceed gross receipts.
+
+Cancel an unfilled reservation with service.cancel(account_id, event_key, order_id,
+expected_version=0). Expire it using the same signature with service.expire after its
+persisted deadline. Neither spends cash nor creates income. A cancellation/expiry
+cannot reverse a fill. No partial fills/settlements or post-close edits are supported.
+
+After any uncertain outcome, reconnect and repeat the identical command/key/version.
+Accepted and rejected responses are durable. A stale-version rejection requires a
+fresh state read and a new intentional command/key; changing a cached key's payload
+raises RequestConflictError. Retrying submit after cancellation still returns its
+historical RESERVED receipt: get_order is the current status. Do not treat historical
+receipts as authorization. A reviewed new experiment needs a fresh observation ID.
+
+Deadlines require aware datetime inputs and are normalized to UTC. The service owns
+its clock (injectable only for deterministic simulation/testing); expiry does not take
+an arbitrary per-command timestamp. There is no expiry scheduler or automatic release.
+Cash/deployed/open-loss/P&L/equity are exposed by get_account; get_order exposes order
+version, deadline, position status, spent cash, open loss and closed total P&L. Equity
+uses cost-valued refundable assets; no unrealized market P&L is claimed.
+
+All lifecycle methods own a transaction and must not be wrapped in one. Lock errors
+and SQL/audit failures produce no successful response and no partial money movement.
+Audit/receipt data and journals commit together. Internal discrepancies halt movements
+while retaining commitments; never patch tables to force agreement. An intact halted
+account permits cancellation/expiry/full settlement but stays halted. No unhalt exists.
+
+Stop writers and take/verify a SQLite backup before the v2 upgrade. Opening a known,
+intact v1 database rebuilds order/reservation tables, preserves identities and adds
+positions, lifecycle receipts and sealed journals transactionally. Genesis postings
+link to existing explicit synthetic genesis audits. Unsupported/incomplete schemas
+or inconsistent history fail closed; failed migration leaves v1 paper data/schema
+intact. Do not reopen a v2 database with v1 code or delete metadata/history. Keep a
+forward repair path; never restore an old snapshot to erase committed actions.
+
+Journal/lifecycle UPDATE/DELETE operations are blocked. The legacy ledger remains
+historical and separate. Current internal checks do not provide market valuation,
+external reconciliation or repair authorization. P&L has no daily reset and filled
+positions retain risk across dates. Live funding, PHP 500 pilot activation, card access
+and external execution remain unavailable; default config stays PAPER/zero capital.
