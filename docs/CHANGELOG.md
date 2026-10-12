@@ -92,3 +92,30 @@
   remain the required CI matrix; inspect their status on the latest PR head.
 - No execution capabilities enabled. Paper reservations, lifecycle, reconciliation,
   freshness checks and live release remain future work.
+
+## 2026-10-12 — Persistent paper accounts and atomic reservations
+
+- Added explicit synthetic account genesis, immutable limits/currency, persistent
+  cash/reservation state and audited halts. PHP/USD profiles use exact cents.
+- Added a version/checksum-guarded additive paper schema, foreign keys and unique
+  account/request/order references. Legacy ledger amounts never become paper cash.
+- Added Repository.transaction with BEGIN IMMEDIATE, bounded busy timeout and
+  rejected nesting. Phase1Engine now uses this owned transaction; direct legacy
+  writes still participate in caller-managed transactions.
+- Added atomic submit-and-reserve: effective account state is loaded under the
+  write lock, screening/prospective loss checks run, and decision/request/order/
+  reservation/account update/audit commit together or roll back.
+- Canonical request identities return stored results on equivalent retries and
+  reject conflicting inputs. Accepted observations cannot be reserved twice in an
+  account or reinterpreted in another currency. No cash is spent by reservations.
+- Cash-cost contracts explicitly distinguish refundable principal from expensed
+  purchases; conservative loss allowance includes all reserved cash. Fees cannot
+  be silently omitted, and expensed principal is not charged a second time.
+- Added reservation/genesis consistency checks that halt accounts on discrepancies;
+  this is not full journal/account reconciliation. No unhalt or fill path added.
+- Verification: 115 tests passed locally on Python 3.12.14 / pytest 8.3.5;
+  compilation and diff whitespace checks passed. Includes independent-connection
+  races, SQL/audit failures, process exit before commit/response, backup restoration,
+  schema compatibility failures, cross-day retention and currency safeguards.
+- All real execution/card/withdrawal capabilities remain disabled. Next work is
+  the supported paper order lifecycle and balanced settlement/accounting.

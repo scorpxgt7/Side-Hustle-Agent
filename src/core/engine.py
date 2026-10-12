@@ -17,7 +17,7 @@ class Phase1Engine:
         state = state if state is not None else PortfolioState()
         evaluation = self.evaluator.evaluate(opportunity)
         decision = self.risk.evaluate(opportunity, limits, state, evaluation)
-        with self.repository.conn:
+        with self.repository.transaction():
             self.repository.save_opportunity(opportunity)
             decision_id = self.repository.save_decision(opportunity.id, decision)
             self.repository.audit(str(uuid4()), "opportunity_decision", opportunity.id, {

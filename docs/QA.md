@@ -102,3 +102,36 @@ Earlier aggregate-capital checkboxes cover caller-supplied screening snapshots,
 not reservations, cross-day exposure or concurrent allocation. Those capabilities,
 paper order idempotency, reconciliation, freshness, kill switch and live gates
 remain unimplemented. PHP 500 has not been funded or activated as a runtime limit.
+
+## Paper account/reservation verification — 2026-10-12
+
+Local Python 3.12.14 / pytest 8.3.5: **115 passed**. Source compilation and git diff
+whitespace checks passed. Verify Python 3.11/3.13 CI on the follow-up PR's exact head.
+
+Acceptance coverage:
+- Synthetic genesis is immutable and audited; failures create no account.
+- Independent connections competing for 100 deployable cash with two 60 requests
+  produce one reservation; concurrent identical requests return one durable effect.
+- Numeric-equivalent retries return stored accepted/rejected results, while conflicting
+  request/observation identities and duplicate accepted observations cannot add orders.
+- Cash/fees, capital-cost treatment, single allocation and conservative aggregate loss
+  checks use effective persisted limits; zero/equality stops reject prospective exposure.
+- Explicit currency and per-observation denomination prevent implicit FX reinterpretation.
+- SQL failures at request/order/reservation writes and audit failures roll back all
+  related observation/decision/account records. No cash is debited by reservation.
+- Real process exit before commit recovers uncommitted state; exit after commit before
+  response permits exact same-key recovery without a second decision/order/reservation.
+- Nested transactions cannot commit caller records; busy writers return no approval and
+  the unchanged request key can be retried after lock release.
+- Reservations survive reopening and old timestamps; no date-based capital release.
+- Persistent/idempotent halts block new capacity; halt-audit failures preserve prior state.
+- Projection and malformed-genesis discrepancies halt accounts; this is a reservation-only
+  consistency check, not completed journal, position, market or external reconciliation.
+- Foreign keys reject cross-account reservation links; legacy ledger data is not imported
+  as cash. Unknown/incomplete/unversioned schemas fail before silent reconstruction.
+- SQLite backup restoration preserves cash/reservations and request identities.
+- Unsupported scales, storage bounds, currencies, loss assumptions and LIVE mode reject.
+
+Remaining gates: fill/cancel/expire/settle transitions, positions, balanced journal,
+valuation/full reconciliation/unhalt, freshness contracts, daily runner and live release.
+No debit-card integration, real deposit, purchase, trade or realized profit is tested here.

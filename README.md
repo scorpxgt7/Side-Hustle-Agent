@@ -52,3 +52,11 @@ settings. Reporting ratios use a versioned 50-digit policy. Inputs are bounded
 to 64 coefficient digits and exponents/magnitudes within [-128, 128]. Decision
 audits include the effective limits, portfolio state, evaluation and decision ID.
 The most recent dated PROJECT_CONTEXT entry supersedes historical phase labels.
+
+Synthetic paper accounts can now persist cash and reserve cash/loss capacity
+atomically through `PaperAccountService`. Identical request retries return the
+stored result; conflicts and duplicate reservations fail closed. PHP and USD
+profiles use exact cents, with no FX conversion. Orders stop at `RESERVED`.
+See the latest OPERATIONS entry for the API and its limited cash-cost contracts.
+Fills, cancellation/expiry, settlement, full journal reconciliation and live
+funding remain future work; the default configuration still has zero capital.
