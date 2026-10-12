@@ -122,3 +122,75 @@ No schema migration/backfill is required. Keep caller-managed direct transaction
 PHP 500 is the user-specified future cumulative pilot loss ceiling, not funded
 capital. Funding integration and per-action policy are not implemented. Keep the
 zero-capital PAPER default and all execution flags false.
+
+## Synthetic account/reservation procedures — 2026-10-12
+
+Use an isolated synthetic database/profile. The example below creates fictional
+PHP cash, not real funds or an approved live budget:
+
+```python
+from decimal import Decimal as D
+from src.persistence.sqlite import Repository
+from src.core.models import CapitalLimits, Opportunity, OpportunityType
+from src.core.paper_accounts import PaperAccountService, PaperActionSpec
+
+repo = Repository("data/paper_demo.db")
+service = PaperAccountService(repo)
+limits = CapitalLimits(D("200"), D("0.5"), D("100"), D("200"), D("200"))
+service.create_account("demo", limits, currency="PHP")  # Once; genesis is immutable.
+opportunity = Opportunity("observation-001", OpportunityType.OTHER, "Synthetic fixture",
+                          D("60"), D("120"), D("0"), D("0.8"), confidence=D("1"))
+action = PaperActionSpec("PHP", D("60"), D("60"), "refundable")
+result = service.submit("demo", "request-001", opportunity, action)
+state = service.get_account("demo")  # Cash 200; reserved 60; available 40.
+repo.close()
+```
+
+Keep request IDs stable across retries. Equivalent trailing-zero representations
+are canonicalized. Conflicting payloads fail without replacing history; a rejected
+request remains rejected on retry. Use a new observation ID for revised evidence.
+Different accounts/currencies cannot reinterpret the same observation's denomination.
+The action spec declares observation currency; verify it from source data before use.
+
+Amounts must be exact PHP/USD cents. cash_required is the complete supported cash
+commitment including fees. worst_case_loss must be at least that cash commitment.
+Choose the capital treatment explicitly:
+- refundable: expected_cost contains common fees/costs; failure_cost is principal
+  write-off capped at required_capital; reserve required_capital + expected_cost.
+- expensed: expected_cost already contains purchased principal; it must be at least
+  required_capital; reserve expected_cost + failure_cost without adding principal again.
+
+Unsupported obligations/fee schedules must not be squeezed into these contracts.
+No fills or cash movement occur. RESERVED orders cannot yet be cancelled/expired;
+release and settlement belong to the next reviewed lifecycle increment.
+
+Service methods own Repository.transaction and must be called with no existing
+transaction. This acquires BEGIN IMMEDIATE before account reads. Phase1Engine uses
+the same owner and rejects nesting. For direct related writes, prefer:
+
+```python
+with repo.transaction():
+    repo.ledger("event-001", "credit", D("1"))
+```
+
+Legacy `with repo.conn` direct-write usage remains compatible, but must not wrap
+service or engine calls. No helper commits a caller's pending transaction. Default
+busy timeout is 0.25 seconds; an explicit Repository timeout can be chosen. SQLITE_BUSY
+raises OperationalError and returns no result. Retry the same key; do not invent a
+new key after a lost response. Following an unknown outcome, reopen the repository
+and submit the same payload/key to recover the committed result.
+
+`service.halt(account_id, reason)` atomically persists a halt and audit; repetition
+does not add effects. Reservations remain intact. get_account/submit perform limited
+genesis/reservation checks and halt on a mismatch. No unhalt API exists until full
+reconciliation supports it. Never manually patch balances to silence a discrepancy.
+
+Before opening an existing database under this release, stop writers and take a
+verified SQLite backup. New paper tables are added transactionally; legacy ledger
+history is retained without inferred balances. Unknown versions/checksums or missing
+tables fail closed. Do not delete metadata or recreate missing tables automatically.
+After new writes, retain history and use a forward repair/compatible rollback rather
+than discarding committed actions with an older snapshot.
+
+Default config stays PAPER/zero capital with card/live/withdrawal flags false.
+Source freshness, full accounting reconciliation and real-money funding remain absent.

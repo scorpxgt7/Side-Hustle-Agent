@@ -1,6 +1,7 @@
 """Small SQLite persistence layer for opportunities, decisions, ledger and audit events."""
 import json
 import sqlite3
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -8,13 +9,34 @@ from src.core.models import finite_decimal, validate_identifier
 
 
 class Repository:
-    def __init__(self, path: str | Path = "data/side_hustle.db"):
+    def __init__(self, path: str | Path = "data/side_hustle.db", *, timeout: float = 0.25):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.path)
+        self.conn = sqlite3.connect(self.path, timeout=timeout, isolation_level="DEFERRED")
         self.conn.row_factory = sqlite3.Row
-        self._init_schema()
-        self.conn.commit()
+        try:
+            self.conn.execute("PRAGMA foreign_keys = ON")
+            from .paper_schema import initialize_paper_schema, validate_paper_schema
+            validate_paper_schema(self.conn)
+            self._init_schema()
+            self.conn.commit()
+            initialize_paper_schema(self)
+        except BaseException:
+            self.conn.close()
+            raise
+
+    @contextmanager
+    def transaction(self):
+        """Own a serialized write unit; reject nesting instead of committing callers."""
+        if self.conn.in_transaction:
+            raise RuntimeError("transaction already active; finish the caller's transaction first")
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+            self.conn.commit()
+        except BaseException:
+            self.conn.rollback()
+            raise
 
     def _init_schema(self) -> None:
         self.conn.executescript("""
