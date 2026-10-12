@@ -252,9 +252,10 @@ Record:
 Never log secrets.
 
 The current repository implements Phase 1 candidate screening and synthetic
-paper accounts with atomic cash/loss reservations and orders in RESERVED state.
-Fills, cancellation/expiry, settlement, integrated accounting, full reconciliation
-and live execution remain future work. Use the latest dated PROJECT_CONTEXT
+paper accounts with atomic cash/loss reservations, full fill/cancel/expire/settle
+transitions and balanced journal accounting. Internal projection checks halt on
+inconsistency. Full reconciliation/unhalt, valuation, source freshness, daily
+orchestration and live execution remain future work. Use the latest dated PROJECT_CONTEXT
 entry as the current state; older entries remain historical records.
 
 ### 9. Human Approval Boundary

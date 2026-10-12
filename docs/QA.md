@@ -135,3 +135,45 @@ Acceptance coverage:
 Remaining gates: fill/cancel/expire/settle transitions, positions, balanced journal,
 valuation/full reconciliation/unhalt, freshness contracts, daily runner and live release.
 No debit-card integration, real deposit, purchase, trade or realized profit is tested here.
+
+## Paper lifecycle/accounting verification — 2026-10-12
+
+Acceptance criteria for this increment:
+- Full refundable fills transfer principal to cost-valued assets, realize fees once,
+  release unused cash encumbrance and retain open conservative loss capacity.
+- Expensed purchases realize entry spend once; subsequent receipts do not expense
+  principal again. Profit, full loss, salvage and break-even flows have independent
+  expected cash, equity, position P&L and aggregate realized P&L assertions.
+- Open positions continue to consume allocation/loss/drawdown capacity; aggregate
+  all-in deployment remains capped at genesis policy even after profits.
+- Cancellation/explicit expiry release only unfilled commitments exactly once and
+  produce no income. Expiry requires a persisted deadline; equality blocks fills.
+  Cached rejections remain rejected after time advances; no automatic day release.
+- Same-key retries recover historical responses across reopen, closure and backup;
+  changed command payloads conflict, stale versions reject and cross-account links fail.
+- Independent connections racing fill/cancel, identical fill, and same/different-key
+  settlement produce one effect with consistent projections.
+- SQL failures at reservation deletion, position/order/account changes, journals,
+  postings and event receipts roll back the entire fill/settlement. Audit failures
+  roll back each transition. Busy locks/nesting cannot commit caller work.
+- Real process exit after writes before commit restores reservations/cash; exit after
+  commit before response permits same-key recovery without duplicated movement.
+- Journals balance in cents, survive backup/reopen and reject history rewrites.
+  Extra postings, altered position/audit/deadline records halt before more movement.
+- Halted intact accounts block fills but permit supported exposure reduction while
+  remaining halted. Corrupted accounts cannot cancel away unexplained commitments.
+- Pinned actual v1 schema migrates preserving reservations/request responses/audits,
+  backfills only explicit synthetic genesis and verifies foreign keys. Bad cash,
+  reservations, requests and foreign keys abort all paper DDL/backfill. Missing history
+  guards and unknown schemas fail closed.
+- Invalid scale/non-finite/negative money, storage overflow, currency mismatch,
+  partial principal and overspend reject. Caller Decimal context cannot change money.
+
+Remaining gates: standalone reconciliation/reporting and reviewed repair/unhalt,
+market valuation, day boundaries/spend accounting, source freshness, daily runner,
+strategy evidence and separately reviewed live-release controls. Synthetic outcomes
+are not evidence of an available profitable strategy or real-money readiness.
+
+Verification result for this increment: **185 passed** locally on Python 3.12.14
+with pytest 8.3.5. Source compilation and git diff whitespace checks passed.
+Python 3.11/3.13 remain required CI; verify both against the published PR head.

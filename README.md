@@ -56,7 +56,11 @@ The most recent dated PROJECT_CONTEXT entry supersedes historical phase labels.
 Synthetic paper accounts can now persist cash and reserve cash/loss capacity
 atomically through `PaperAccountService`. Identical request retries return the
 stored result; conflicts and duplicate reservations fail closed. PHP and USD
-profiles use exact cents, with no FX conversion. Orders stop at `RESERVED`.
-See the latest OPERATIONS entry for the API and its limited cash-cost contracts.
-Fills, cancellation/expiry, settlement, full journal reconciliation and live
-funding remain future work; the default configuration still has zero capital.
+profiles use exact cents, with no FX conversion. `PaperLifecycleService` supports
+full fills, cancellation, explicit deadline expiry and full settlement. Balanced
+journal records preserve cash, fees, cost-valued positions and P&L; open loss
+capacity remains committed until closure. Known reservation databases migrate
+transactionally to schema v2. See the latest OPERATIONS entry for the API and
+supported cash-flow contracts. Market valuation, full reconciliation/unhalt,
+source freshness, daily orchestration and live funding remain future work;
+the default configuration still has zero capital.

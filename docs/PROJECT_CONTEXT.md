@@ -244,3 +244,62 @@ it is not funded, activated, converted to USD or reset as a daily allowance here
 All configuration execution flags remain false. Next required increment: paper
 fill/cancel/expire/settle lifecycle with balanced accounting, then full reconciliation,
 source freshness and daily orchestration before separate live-release gates.
+
+## Current state — paper lifecycle/accounting increment, 2026-10-12
+
+This entry supersedes earlier current-state/next-step entries. Phase 1 now supports
+**synthetic reservations and full order/position lifecycle with balanced accounting**.
+It remains a restricted PAPER simulation; no provider or real-money action exists.
+
+- PaperLifecycleService extends account/reservation APIs with fill, cancel, expire,
+  settle and get_order. RESERVED becomes FILLED, CANCELLED or EXPIRED; FILLED opens
+  one position and settlement closes it and the order as CLOSED. Only full fills at
+  the immutable observation's principal and one full settlement are supported.
+- Every lifecycle command requires a stable account-scoped event key and expected
+  order version. Equivalent retries recover the original accepted/rejected response;
+  changed inputs conflict. Historical results do not authorize another transition.
+  BEGIN IMMEDIATE serializes effective state reads, journal/account/order writes,
+  event responses and audit snapshots. Fill/cancel and settlement races have one effect.
+- A fill spends principal plus explicit actual entry fees within the cash reservation.
+  Unused cash encumbrance is released. Deployment and residual conservative loss
+  remain assigned to the open position; reservations alone no longer represent risk.
+  New submissions count reserved plus deployed all-in cash against the immutable
+  genesis deployment ceiling. Profits cannot silently increase that ceiling.
+- Refundable principal moves from cash to a cost-valued asset; entry fees reduce P&L.
+  Expensed principal plus entry fees reduce P&L immediately and create no asset.
+  Remaining position loss is original loss allowance minus expense already realized.
+  Loss/drawdown checks include remaining open risk and realized expenses exactly once.
+- Settlement explicitly separates capital_return, revenue and exit fees. Refundable
+  principal return is capped at original principal; missing return becomes a write-off.
+  Expensed purchases require zero capital_return, with sale receipts in revenue.
+  Exit fees must be deducted from gross proceeds; additional outgoing obligations,
+  partial fills/settlements, borrowing, shorting, FX and unsupported contracts reject.
+  Total position P&L is all net proceeds minus entry cash spent; costs are not charged twice.
+- Orders may receive an immutable aware-UTC expiry deadline on submit. The service
+  clock must reach it before explicit expiry. Late fills reject while commitments
+  remain held. Old dates or clock advancement never release cash automatically.
+  Migrated orders without a deadline retain commitments until explicit cancellation.
+- Journal entries/postings represent synthetic genesis equity, deployment, expenses,
+  income and settlement. Entries are balanced in integer cents and linked to audits.
+  Journal and lifecycle history reject UPDATE/DELETE; sealed posting manifests detect
+  extra/changed postings. The older recording ledger is independent and never funds cash.
+- Internal checks compare journal cash/assets/P&L/peak, reservations, positions, command
+  receipts, currency, order versions and audits to projections. Discrepancies persist a
+  halt and retain commitments. Halted accounts block deployment; intact cancellation,
+  expiry and supported settlement can reduce exposure while the halt remains in place.
+  No unhalt/repair API, market marks or authoritative external reconciliation exists.
+- Schema v2 preserves the pinned v1 checksum. Known intact v1 databases upgrade under
+  one transaction, preserving orders, requests and historical audit records. Genesis
+  journals derive solely from explicit synthetic funding audits. Inconsistency, foreign
+  key problems or unsupported schemas abort; no legacy funds or profits are inferred.
+
+The historical realized_daily_pnl_minor field currently holds cumulative realized P&L;
+there is no day boundary/reset, daily-spend accounting or automatic runner. Equity uses
+cost for refundable positions, not market value. Next smallest required increment is
+a read-only reconciliation report that independently reconstructs account balances,
+open commitments and audit-linked history, reports discrepancies and keeps writes
+halted; then define valuation/day boundaries and reviewed repair/unhalt. Source
+freshness and daily orchestration still precede separate live-release gates.
+
+PHP 500 remains the cumulative maximum loss for a future live pilot, without funding,
+card access, live activation or a configured pilot profile. All execution flags stay false.

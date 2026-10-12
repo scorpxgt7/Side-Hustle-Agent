@@ -119,3 +119,37 @@
   schema compatibility failures, cross-day retention and currency safeguards.
 - All real execution/card/withdrawal capabilities remain disabled. Next work is
   the supported paper order lifecycle and balanced settlement/accounting.
+
+## 2026-10-12 — Paper lifecycle implementation intent
+
+Implement the next PAPER-only increment in a stacked follow-up PR: full fills,
+explicit cancellation/deadline expiry, and full settlement. Add balanced immutable
+journal records, retain open-position loss capacity, and migrate known reservation
+schemas transactionally without importing legacy cash. Verify money movements,
+retry/conflict handling, transition races and rollback before claiming completion.
+No live execution, payment-card access, external adapters or daily reset is enabled.
+
+## 2026-10-12 — Completed paper lifecycle/accounting increment
+
+- Added full PAPER fill/cancel/explicit-expire/settle transitions with expected order
+  versions, durable command results, conflict detection and atomic audit linkage.
+- Added cost-valued refundable assets, expensed purchase accounting, entry/exit fees,
+  full losses/salvage and closed-position P&L without charging costs twice.
+- Transferred loss capacity from reservations to positions and retained open all-in
+  allocation. Added a fixed aggregate deployment check that includes fees after gains.
+- Added balanced, immutable journal history, sealed posting manifests and internal
+  account/order/position/receipt/audit projection checks. Corruption halts movements;
+  intact halted accounts can reduce exposure without automatic unhalting.
+- Added aware-UTC immutable deadlines; expiry is explicit and late fills cannot spend.
+- Added a transactionally guarded v1-to-v2 migration, retaining request/order/audit
+  history and deriving genesis journals only from explicit synthetic funding records.
+- Updated active README/PROMPT and appended authoritative context, API procedures,
+  migration guidance and QA coverage; previous documentation remains historical.
+- Verification: 185 tests passed locally on Python 3.12.14 / pytest 8.3.5; source
+  compilation and diff whitespace checks passed. Coverage includes independent money
+  expectations, command races, SQL/audit rollback, process exit/retry, backup/restore,
+  migration failure rollback, corruption halts and Decimal-context independence.
+  Required Python 3.11/3.13 CI must pass on the published PR head before merge.
+- Default execution flags remain false. No real funds/card/live/external adapters.
+  Next: independent reconciliation reporting, then valuation/day-boundary and reviewed
+  repair/unhalt controls, source freshness and daily orchestration before live release.
