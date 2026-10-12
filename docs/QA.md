@@ -177,3 +177,58 @@ are not evidence of an available profitable strategy or real-money readiness.
 Verification result for this increment: **185 passed** locally on Python 3.12.14
 with pytest 8.3.5. Source compilation and git diff whitespace checks passed.
 Python 3.11/3.13 remain required CI; verify both against the published PR head.
+
+## Reconciliation/autonomy sandbox verification — 2026-10-12
+
+Local Python 3.12.14 / pytest 8.3.5: **249 passed**. Source compilation and diff
+whitespace checks passed. The offline CLI expense/income/profit-distribution cycle
+and independent read-only report executed successfully. Verify required Python
+3.11/3.13 CI against the published PR head before merge.
+
+New acceptance coverage:
+- Independent reconstruction does not invoke writer projection code; discrepancies
+  report exact fields without modifying the database or creating a missing database.
+- Expected cash/P&L/performance equity, distributed owner profit, open commitments,
+  retained fee holds and payout drawdown distinguish distributions from expenses.
+- Approved vendors, immutable profiles/routes, fresh/not-future evidence, one-off
+  contracts and lifetime spend/loss limits reject before additional approvals. Gains
+  cannot reset caps. An expired declaration prevents spending an existing reservation.
+- Profit-only payouts reject open/halted accounts, protected cash use, changed routes,
+  insufficient net profit and excess fees. Unknown/unverified outcomes retain holds.
+- Same-key results survive later state changes; concurrent connections cannot double
+  reserve profit or produce a second provider POST. Provider fingerprints bind jobs.
+- Audit failures roll back payout requests/claims/settlement; failed provider claims
+  never call HTTP. A crash after a durable dispatch marker recovers by GET only.
+- Old intact v1/v2 databases migrate while preserving history; inconsistent v2 data
+  leaves schema/checksum/guards/history intact. Foreign keys remain valid.
+- Test provider endpoint payloads use v2 creation and documented read paths, integer
+  PHP amounts, stable idempotency/ref values and simulator GoTyme/PESONet targets.
+- Live/missing/invalid keys, non-test destinations/resources, mismatched currencies,
+  identities, fee overruns, refunds/disputes and malformed money fail closed.
+- Normalized receipts omit provider billing/card objects. API errors and readiness
+  output do not expose secret keys/source wallet numbers.
+- HMAC test webhooks reject wrong raw bodies, live modes/signatures, duplicate fields
+  and stale/future timestamps. Authentication alone never credits available money.
+- Paid network checkout remains PAID_UNCLEARED, even with past scheduled timestamps;
+  fixture clearing cannot be invoked for a network sandbox adapter.
+- Interrupted/unknown creation is never resubmitted. Empty/ambiguous lookup cannot
+  release holds; confirmed recovery retains the account's halt.
+- Repeating the offline end-to-end demo adds no duplicate expense/income/distribution.
+  Its outputs are explicitly synthetic, with real_money_moved=false.
+
+Validation limit: HTTP transports and provider responses were mocked; no test key
+or test wallet is installed, so authenticated provider sandbox smoke tests have not
+run. Passing mocks does not establish merchant capability, live eligibility or profits.
+Outstanding live gates include authoritative wallet/bank clearing, verified one-off
+expense vendor and own-bank route, credentials/onboarding, deployment/webhook security,
+tax/refund/obligation reserves, market/source truth, strategy evidence, day/scheduler
+controls, reviewed repair/unhalt and separately reviewed activation. No real card
+charge, customer income, deposit or payout occurred.
+
+### Final review regression verification — 2026-10-12
+
+Latest local result: **253 passed** on Python 3.12.14 / pytest 8.3.5. Source compilation
+and diff whitespace checks passed. Additional tests prove that older submission,
+settlement and payout entry points cannot bypass persisted lifetime-spend/fee/route
+policies; corrupt pilot audits are reported independently and halt through the older
+account API. Check Python 3.11/3.13 CI on the updated head, not the earlier 249-test head.

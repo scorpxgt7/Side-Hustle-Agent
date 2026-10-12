@@ -483,7 +483,7 @@ def test_v1_migration_preserves_retry_history_and_enables_fill(tmp_path):
     result = create_v1(path)
     repo = Repository(path)
     service = PaperLifecycleService(repo)
-    assert repo.conn.execute('SELECT version FROM paper_schema').fetchone()[0] == 2
+    assert repo.conn.execute('SELECT version FROM paper_schema').fetchone()[0] == 3
     assert service.get_account('demo').cash == D('200')
     assert service.get_account('demo').reserved_cash == D('60')
     assert service.submit('demo','old',opportunity('old'),PaperActionSpec('PHP',D('60.0'),D('60.00'),'refundable')) == result

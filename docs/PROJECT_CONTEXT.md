@@ -303,3 +303,89 @@ freshness and daily orchestration still precede separate live-release gates.
 
 PHP 500 remains the cumulative maximum loss for a future live pilot, without funding,
 card access, live activation or a configured pilot profile. All execution flags stay false.
+
+## Current state — reconciliation and sandbox autonomy, 2026-10-12
+
+This entry supersedes earlier current-state and next-step entries. The user clarified
+that the intended funding method is a **GoTyme Bank Visa virtual debit card** and
+requested the implementation/integrations needed for autonomous bounded expenses
+and income payouts. This updates the earlier physical-card assumption. No card,
+account number, CVV, PIN, OTP, bank login or provider secret has been collected.
+The PHP 500 cumulative maximum loss remains a future real-pilot requirement, not
+a deposit amount or permission for an arbitrary charge.
+
+Implemented in this increment:
+- Independent read-only reconstruction of audited genesis, commands, journal manifests,
+  cash, P&L, peak/performance equity, open exposure, reservations, payout holds and
+  provider outbox history. reconcile_path opens mode=ro with a consistent snapshot;
+  it cannot migrate/create, repair balances or unhalt. Scope is INTERNAL_PAPER_ONLY.
+- PilotPaperService binds immutable PAPER/PHP profiles before experiments. The example
+  policy uses PHP 50/action, PHP 500 lifetime spending and PHP 500 cumulative loss;
+  these are simulation defaults, not chosen live purchasing permissions. Gains do
+  not reset lifetime spending or increase policy limits. Fees/remaining commitments
+  are counted. Only approved vendor_ references, expensed one-off contracts and
+  fresh aware-UTC HTTPS evidence declarations pass automation. Declarations are not
+  source verification or evidence of actual demand/profitability.
+- Profit-only synthetic payouts use one opaque route_ reference. All experiments must
+  be closed; protected/genesis capital, prior distributions, fee caps and pilot budget
+  checks apply. RESERVED -> SENDING -> PENDING/UNKNOWN/SUCCEEDED/FAILED is audited;
+  unknown states retain all holds and halt the account. Only matching confirmed
+  terminal outcomes release capacity. Halts remain until a future reviewed unhalt.
+- Successful payout journals debit owner equity and fee expense, crediting cash.
+  Current/peak equity now measure performance including distributed profits, so owner
+  distributions are not trading drawdown; payout fees remain actual expense. With no
+  distributions this is identical to the earlier cost-valued equity behavior.
+- PayMongo test-key-only adapters cover current v2 checkout/transfer writes and their
+  documented read routes. Live keys/resources, redirects, other destinations/currencies,
+  mismatched correlations/fees and malformed amounts reject. Only published test
+  transfer numbers are accepted; no actual GoTyme account is used in simulation.
+- Durable provider claims/dispatch markers commit before HTTP. No network call occurs
+  inside a database transaction. Same-key retries/restarts cannot repeat an attempted
+  POST. Unknown payout recovery uses read-by-reference and does not rely on provider
+  idempotency retention past its documented approximate 24-hour window. Credential,
+  source/destination scope is fingerprinted and cannot change on an existing operation.
+- Customer hosted checkout collects payment through PayMongo, not this repository.
+  Raw billing/card objects are not persisted. PAID_UNCLEARED never credits cash or
+  authorizes payouts; scheduled available/credited timestamps are not clearance proof.
+  Only the explicitly offline fixture path simulates clearing for the end-to-end demo.
+- Test webhook verification uses documented raw-body HMAC-SHA256, mode checks,
+  constant-time comparison, timestamp tolerance and size limits. No HTTP webhook
+  service has been deployed or provider account configured by this release.
+- Schema v3 preserves pinned v1/v2 checksums and upgrades known intact schemas under
+  one transaction without changing existing journal IDs/amounts/audits. New profile,
+  payout and sandbox outbox history remains audited and guarded against rewrites.
+- CLI provides readiness, independent reconcile, offline demo, and explicitly selected
+  sandbox checkout/payout/read operations. The fixture simulates 50 expense, 100
+  income less 5 deductions, then 35 distribution plus 10 payout fee; closing cash is
+  500 with 35 distributed. It represents no real customer, return or profit evidence.
+
+Provider capability findings are sourced in SANDBOX_SETUP.md. PayMongo's published
+bank table lists GoTyme for PESONet, not InstaPay at review time; merchant/account
+eligibility still needs authenticated verification. Deprecated wallet-v1 transfer
+writes are not used. No direct GoTyme consumer card-control API or verified expense
+merchant purchasing adapter has been established. Card payment acceptance is not
+an API for buying anything on the web, and merchant checkout must not be used to
+self-charge funds into an experiment wallet.
+
+Verification is offline/mocked: no PayMongo test key or test wallet is configured in
+this session, so authenticated provider sandbox smoke tests have not executed. No
+real deposit, charge, customer receipt, payout or card access occurred. Default
+PAPER/USD/zero capital and all execution flags stay false; the PHP profile is explicit
+synthetic data, not a conversion of that default or an activated live pilot.
+
+Next required integration: account-owner provider onboarding/private test credentials
+and authenticated contract checks, followed by authoritative cleared-wallet/bank
+reconciliation and a verified one-off expense vendor/secure saved-card path. Before
+live release also implement secure hosting/auth/webhook processing/monitoring,
+verified own-bank destination, tax/refund/obligation reserves, strategy evidence,
+discovery/daily orchestration, and reviewed release/unhalt controls. No real-money
+readiness or guaranteed daily income is claimed.
+
+### Shared policy enforcement correction — 2026-10-12
+
+Persisted pilot profiles now apply even through the older PaperAccountService,
+PaperLifecycleService and PaperPayoutService entry points. A worker cannot bypass
+pilot lifetime spending, fixed routes or exit-fee limits by choosing a base service.
+Shared writer integrity and independent reporting also check profile audit linkage;
+corruption halts rather than silently dropping policy. All other sandbox/live
+limitations above remain unchanged. Latest local verification: 253 tests passed.

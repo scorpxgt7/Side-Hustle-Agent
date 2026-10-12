@@ -253,9 +253,13 @@ Never log secrets.
 
 The current repository implements Phase 1 candidate screening and synthetic
 paper accounts with atomic cash/loss reservations, full fill/cancel/expire/settle
-transitions and balanced journal accounting. Internal projection checks halt on
-inconsistency. Full reconciliation/unhalt, valuation, source freshness, daily
-orchestration and live execution remain future work. Use the latest dated PROJECT_CONTEXT
+transitions, balanced journals and independent read-only reconciliation. Immutable
+PHP pilot profiles add vendor, declared evidence freshness and lifetime spending
+checks. Journaled synthetic profit distributions retain unknown/pending holds.
+PayMongo v2 adapters accept test keys/simulator destinations only. Paid notifications
+never become cleared income automatically. Direct card spending, authoritative
+wallet/bank reconciliation, discovery, valuation/tax/refund policy, repair/unhalt,
+daily orchestration, production hosting and live execution remain incomplete. Use the latest dated PROJECT_CONTEXT
 entry as the current state; older entries remain historical records.
 
 ### 9. Human Approval Boundary
